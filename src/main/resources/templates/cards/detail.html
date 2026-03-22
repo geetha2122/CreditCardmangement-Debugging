@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Card Detail</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-brand">&#128179; CreditCard Manager</div>
+    <div class="nav-links">
+        <a th:href="@{/cards}">All Cards</a>
+        <a th:href="@{/cards/new}">+ Add New Card</a>
+        <a th:href="@{/cards/search}">Search</a>
+        <a th:href="@{/h2-console}" target="_blank">H2 Console</a>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- Flash Messages -->
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-error" th:text="${errorMessage}"></div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Card Details</h2>
+            <div>
+                <a th:href="@{/cards/edit/{id}(id=${card.id})}" class="btn btn-warning">Edit</a>
+                <a th:href="@{/cards}" class="btn btn-secondary">Back to List</a>
+            </div>
+        </div>
+
+        <!-- Card Info -->
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="label">Card ID</span>
+                <span class="value" th:text="${card.id}"></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Cardholder</span>
+                <span class="value" th:text="${card.cardholderName}"></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Card Number</span>
+                <span class="value" th:text="${'**** **** **** ' + card.cardNumber.substring(card.cardNumber.length() - 4)}"></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Card Type</span>
+                <span class="badge" th:text="${card.cardType}"
+                      th:classappend="${card.cardType == 'VISA'} ? 'badge-blue' :
+                                      (${card.cardType == 'MASTERCARD'} ? 'badge-red' :
+                                      (${card.cardType == 'AMEX'} ? 'badge-green' : 'badge-orange'))">
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Expiry Date</span>
+                <span class="value" th:text="${card.expiryDate}"></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Status</span>
+                <span th:if="${card.isActive}" class="badge badge-green">Active</span>
+                <span th:unless="${card.isActive}" class="badge badge-gray">Inactive</span>
+            </div>
+        </div>
+
+        <!-- Credit Summary -->
+        <div class="credit-summary">
+            <div class="summary-item">
+                <span class="summary-label">Credit Limit</span>
+                <span class="summary-value" th:text="${'$' + #numbers.formatDecimal(card.creditLimit, 1, 2)}"></span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Current Balance</span>
+                <span class="summary-value balance" th:text="${'$' + #numbers.formatDecimal(card.currentBalance, 1, 2)}"></span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Available Credit</span>
+                <span class="summary-value available" th:text="${'$' + #numbers.formatDecimal(availableCredit, 1, 2)}"></span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Utilization</span>
+                <span class="summary-value" th:text="${utilization + '%'}"></span>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <label>Credit Utilization</label>
+            <div class="progress-bar">
+                <div class="progress-fill"
+                     th:style="'width: ' + ${utilization} + '%; background-color: ' +
+                               (${#strings.equals(utilization, '100.0')} ? '#e74c3c' :
+                               (${card.currentBalance / card.creditLimit > 0.7} ? '#f39c12' : '#27ae60'))">
+                </div>
+            </div>
+            <span th:text="${utilization + '% used'}"></span>
+        </div>
+    </div>
+
+    <!-- Payment Form -->
+    <div class="card" th:if="${card.isActive}">
+        <h3>Make a Payment</h3>
+        <form th:action="@{/cards/payment/{id}(id=${card.id})}" method="post" class="inline-form">
+            <div class="form-group">
+                <label for="paymentAmount">Payment Amount ($)</label>
+                <input type="number" id="paymentAmount" name="amount"
+                       class="form-control" step="0.01" min="0.01"
+                       th:max="${card.currentBalance}" placeholder="Enter amount">
+            </div>
+            <button type="submit" class="btn btn-success">Submit Payment</button>
+        </form>
+    </div>
+
+    <!-- Charge Form -->
+    <div class="card" th:if="${card.isActive}">
+        <h3>Make a Charge</h3>
+        <form th:action="@{/cards/charge/{id}(id=${card.id})}" method="post" class="inline-form">
+            <div class="form-group">
+                <label for="chargeAmount">Charge Amount ($)</label>
+                <input type="number" id="chargeAmount" name="amount"
+                       class="form-control" step="0.01" min="0.01"
+                       th:max="${availableCredit}" placeholder="Enter amount">
+            </div>
+            <button type="submit" class="btn btn-warning">Apply Charge</button>
+        </form>
+    </div>
+
+</div>
+</body>
+</html>

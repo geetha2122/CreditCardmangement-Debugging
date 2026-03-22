@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Card Management</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-brand">💳 CreditCard Manager</div>
+    <div class="nav-links">
+        <a th:href="@{/cards}">All Cards</a>
+        <a th:href="@{/cards/new}">Add New Card</a>
+        <a th:href="@{/cards/search}">Search</a>
+        <a th:href="@{/h2-console}" target="_blank">H2 Console</a>
+    </div>
+</nav>
+
+<div class="container">
+    <th:block th:fragment="content"></th:block>
+</div>
+
+</body>
+</html>

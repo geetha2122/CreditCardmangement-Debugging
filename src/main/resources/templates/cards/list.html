@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Credit Cards - List</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-brand">&#128179; CreditCard Manager</div>
+    <div class="nav-links">
+        <a th:href="@{/cards}">All Cards</a>
+        <a th:href="@{/cards/new}">+ Add New Card</a>
+        <a th:href="@{/cards/search}">Search</a>
+        <a th:href="@{/h2-console}" target="_blank">H2 Console</a>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- Flash Messages -->
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-error" th:text="${errorMessage}"></div>
+
+    <!-- Search Form -->
+    <div class="card">
+        <h3>Search Cards</h3>
+        <form th:action="@{/cards/search}" method="get" class="search-form">
+            <input type="text" name="name" placeholder="Search by cardholder name..."
+                   th:value="${searchName}" class="form-control">
+            <select name="type" class="form-control">
+                <option value="">-- Filter by Type --</option>
+                <option th:each="type : ${cardTypes}" th:value="${type}" th:text="${type}"
+                        th:selected="${type == searchType}"></option>
+            </select>
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a th:href="@{/cards}" class="btn btn-secondary">Clear</a>
+        </form>
+    </div>
+
+    <!-- Cards Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Credit Cards</h2>
+            <a th:href="@{/cards/new}" class="btn btn-success">+ Add New Card</a>
+        </div>
+
+        <div th:if="${#lists.isEmpty(cards)}" class="empty-state">
+            <p>No credit cards found.</p>
+        </div>
+
+        <table th:unless="${#lists.isEmpty(cards)}" class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Cardholder</th>
+                    <th>Card Number</th>
+                    <th>Type</th>
+                    <th>Expiry</th>
+                    <th>Credit Limit</th>
+                    <th>Balance</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- BUG #7: Thymeleaf iterates using wrong variable name.
+                             "creditCard" is defined in th:each but "card" is referenced in th:text.
+                             Fix: Change th:each="creditCard : ${cards}" to th:each="card : ${cards}"
+                             OR change all inner th:text="${card.*}" to th:text="${creditCard.*}" -->
+                <tr th:each="creditCard : ${cards}"
+                    th:classappend="${!card.isActive} ? 'row-inactive' : ''">
+                    <td th:text="${card.id}"></td>
+                    <td th:text="${card.cardholderName}"></td>
+                    <td th:text="${'****' + card.cardNumber.substring(card.cardNumber.length() - 4)}"></td>
+                    <td>
+                        <span class="badge" th:text="${card.cardType}"
+                              th:classappend="${card.cardType == 'VISA'} ? 'badge-blue' :
+                                              (${card.cardType == 'MASTERCARD'} ? 'badge-red' :
+                                              (${card.cardType == 'AMEX'} ? 'badge-green' : 'badge-orange'))">
+                        </span>
+                    </td>
+                    <td th:text="${card.expiryDate}"></td>
+                    <td th:text="${'$' + #numbers.formatDecimal(card.creditLimit, 1, 2)}"></td>
+                    <td th:text="${'$' + #numbers.formatDecimal(card.currentBalance, 1, 2)}"></td>
+                    <td>
+                        <span th:if="${card.isActive}" class="badge badge-green">Active</span>
+                        <span th:unless="${card.isActive}" class="badge badge-gray">Inactive</span>
+                    </td>
+                    <td class="actions">
+                        <a th:href="@{/cards/{id}(id=${card.id})}" class="btn btn-sm btn-info">View</a>
+                        <a th:href="@{/cards/edit/{id}(id=${card.id})}" class="btn btn-sm btn-warning">Edit</a>
+                        <form th:action="@{/cards/delete/{id}(id=${card.id})}" method="post"
+                              style="display:inline"
+                              onsubmit="return confirm('Delete this card?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>
