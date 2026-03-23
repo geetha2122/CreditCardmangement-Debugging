@@ -12,18 +12,13 @@ import java.util.Optional;
 @Repository
 public interface CreditCardRepository extends JpaRepository<CreditCard, Long> {
 
-    // Find by cardholder name (case-insensitive)
     List<CreditCard> findByCardholderNameContainingIgnoreCase(String name);
 
-    // Find by card type
     List<CreditCard> findByCardType(String cardType);
 
-    // Find all active cards
     List<CreditCard> findByIsActiveTrue();
 
-    // BUG #3: JPQL query references wrong field name "cardNo" instead of "cardNumber".
-    //         Fix: Change "c.cardNo" to "c.cardNumber"
-    @Query("SELECT c FROM CreditCard c WHERE c.cardNo = :number")
+    @Query("SELECT c FROM CreditCard c WHERE c.cardNumber = :number")
     Optional<CreditCard> findByCardNumber(@Param("number") String cardNumber);
 
     // Find cards where balance exceeds a percentage of credit limit

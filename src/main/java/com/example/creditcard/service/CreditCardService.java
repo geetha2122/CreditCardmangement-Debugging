@@ -12,35 +12,40 @@ import java.util.Optional;
 @Service
 public class CreditCardService {
 
-    // BUG #4: Field injection is used but the repository is never actually injected
-    //         because the @Autowired annotation is missing.
-    //         Fix: Add @Autowired above "private CreditCardRepository creditCardRepository;"
+    @Autowired
     private CreditCardRepository creditCardRepository;
 
+    @Transactional(readOnly = true)
     public List<CreditCard> getAllCards() {
         return creditCardRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public List<CreditCard> getActiveCards() {
         return creditCardRepository.findByIsActiveTrue();
     }
 
+    @Transactional(readOnly = true)
     public Optional<CreditCard> getCardById(Long id) {
         return creditCardRepository.findById(id);
     }
 
+    @Transactional(readOnly = true)
     public Optional<CreditCard> getCardByNumber(String cardNumber) {
         return creditCardRepository.findByCardNumber(cardNumber);
     }
 
+    @Transactional(readOnly = true)
     public List<CreditCard> searchByHolder(String name) {
         return creditCardRepository.findByCardholderNameContainingIgnoreCase(name);
     }
 
+    @Transactional(readOnly = true)
     public List<CreditCard> getCardsByType(String cardType) {
         return creditCardRepository.findByCardType(cardType);
     }
 
+    @Transactional(readOnly = true)
     public List<CreditCard> getHighUtilizationCards(double percentage) {
         return creditCardRepository.findCardsWithHighUtilization(percentage);
     }
@@ -75,9 +80,7 @@ public class CreditCardService {
         CreditCard card = creditCardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Credit card not found with id: " + id));
 
-        // BUG #5: Logic error — payment increases balance instead of decreasing it.
-        //         Fix: Change "+" to "-"
-        double newBalance = card.getCurrentBalance() + amount;
+        double newBalance = card.getCurrentBalance() - amount;
         if (newBalance < 0) {
             throw new IllegalArgumentException("Payment amount exceeds current balance.");
         }
@@ -98,9 +101,28 @@ public class CreditCardService {
         return creditCardRepository.save(card);
     }
 
+    @Transactional(readOnly = true)
     public double calculateAvailableCredit(Long id) {
         CreditCard card = creditCardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Credit card not found with id: " + id));
         return card.getCreditLimit() - card.getCurrentBalance();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CreditCard> search(String name, String type) {
+        if (name != null && !name.isBlank()) {
+            return creditCardRepository.findByCardholderNameContainingIgnoreCase(name);
+        } else if (type != null && !type.isBlank()) {
+            return creditCardRepository.findByCardType(type);
+        }
+        return creditCardRepository.findAll();
+    }
+
+    public double calculateAvailableCredit(CreditCard card) {
+        return card.getCreditLimit() - card.getCurrentBalance();
+    }
+
+    public double calculateUtilizationPercentage(CreditCard card) {
+        return (card.getCurrentBalance() / card.getCreditLimit()) * 100;
     }
 }

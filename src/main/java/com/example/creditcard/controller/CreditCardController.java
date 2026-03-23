@@ -1,9 +1,9 @@
 package com.example.creditcard.controller;
 
+import com.example.creditcard.dto.CardFormDto;
 import com.example.creditcard.model.CreditCard;
 import com.example.creditcard.service.CreditCardService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -16,49 +16,47 @@ import java.util.List;
 @RequestMapping("/cards")
 public class CreditCardController {
 
-    @Autowired
-    private CreditCardService creditCardService;
+    private static final List<String> CARD_TYPES = List.of("VISA", "MASTERCARD", "AMEX", "DISCOVER");
 
-    // --- List all cards ---
+    private final CreditCardService creditCardService;
+
+    public CreditCardController(CreditCardService creditCardService) {
+        this.creditCardService = creditCardService;
+    }
+
     @GetMapping
     public String listCards(Model model) {
-        List<CreditCard> cards = creditCardService.getAllCards();
-        model.addAttribute("cards", cards);
+        model.addAttribute("cards", creditCardService.getAllCards());
         return "cards/list";
     }
 
-    // --- Show form for new card ---
     @GetMapping("/new")
     public String showNewCardForm(Model model) {
-        model.addAttribute("card", new CreditCard());
-        model.addAttribute("cardTypes", List.of("VISA", "MASTERCARD", "AMEX", "DISCOVER"));
+        model.addAttribute("card", new CardFormDto());
+        model.addAttribute("cardTypes", CARD_TYPES);
         return "cards/form";
     }
 
-    // --- Save new card ---
-    // BUG #6: Method is mapped to GET instead of POST — form submission will fail (405 Method Not Allowed).
-    //         Fix: Change @GetMapping("/save") to @PostMapping("/save")
-    @GetMapping("/save")
-    public String saveCard(@Valid @ModelAttribute("card") CreditCard card,
+    @PostMapping("/save")
+    public String saveCard(@Valid @ModelAttribute("card") CardFormDto dto,
                            BindingResult result,
                            Model model,
                            RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
-            model.addAttribute("cardTypes", List.of("VISA", "MASTERCARD", "AMEX", "DISCOVER"));
+            model.addAttribute("cardTypes", CARD_TYPES);
             return "cards/form";
         }
-        creditCardService.saveCard(card);
+        creditCardService.saveCard(toEntity(dto));
         redirectAttributes.addFlashAttribute("successMessage", "Card saved successfully!");
         return "redirect:/cards";
     }
 
-    // --- Show edit form ---
     @GetMapping("/edit/{id}")
     public String showEditForm(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
         return creditCardService.getCardById(id)
                 .map(card -> {
-                    model.addAttribute("card", card);
-                    model.addAttribute("cardTypes", List.of("VISA", "MASTERCARD", "AMEX", "DISCOVER"));
+                    model.addAttribute("card", toDto(card));
+                    model.addAttribute("cardTypes", CARD_TYPES);
                     return "cards/form";
                 })
                 .orElseGet(() -> {
@@ -67,32 +65,28 @@ public class CreditCardController {
                 });
     }
 
-    // --- Update card ---
     @PostMapping("/update/{id}")
     public String updateCard(@PathVariable Long id,
-                             @Valid @ModelAttribute("card") CreditCard card,
+                             @Valid @ModelAttribute("card") CardFormDto dto,
                              BindingResult result,
                              Model model,
                              RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
-            model.addAttribute("cardTypes", List.of("VISA", "MASTERCARD", "AMEX", "DISCOVER"));
+            model.addAttribute("cardTypes", CARD_TYPES);
             return "cards/form";
         }
-        creditCardService.updateCard(id, card);
+        creditCardService.updateCard(id, toEntity(dto));
         redirectAttributes.addFlashAttribute("successMessage", "Card updated successfully!");
         return "redirect:/cards";
     }
 
-    // --- View card detail ---
     @GetMapping("/{id}")
     public String viewCard(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
         return creditCardService.getCardById(id)
                 .map(card -> {
                     model.addAttribute("card", card);
-                    double available = creditCardService.calculateAvailableCredit(id);
-                    model.addAttribute("availableCredit", available);
-                    double utilization = (card.getCurrentBalance() / card.getCreditLimit()) * 100;
-                    model.addAttribute("utilization", String.format("%.1f", utilization));
+                    model.addAttribute("availableCredit", creditCardService.calculateAvailableCredit(card));
+                    model.addAttribute("utilization", String.format("%.1f", creditCardService.calculateUtilizationPercentage(card)));
                     return "cards/detail";
                 })
                 .orElseGet(() -> {
@@ -101,7 +95,6 @@ public class CreditCardController {
                 });
     }
 
-    // --- Delete card ---
     @PostMapping("/delete/{id}")
     public String deleteCard(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         creditCardService.deleteCard(id);
@@ -109,7 +102,6 @@ public class CreditCardController {
         return "redirect:/cards";
     }
 
-    // --- Make a payment ---
     @PostMapping("/payment/{id}")
     public String makePayment(@PathVariable Long id,
                               @RequestParam Double amount,
@@ -124,7 +116,6 @@ public class CreditCardController {
         return "redirect:/cards/" + id;
     }
 
-    // --- Make a charge ---
     @PostMapping("/charge/{id}")
     public String makeCharge(@PathVariable Long id,
                              @RequestParam Double amount,
@@ -139,23 +130,42 @@ public class CreditCardController {
         return "redirect:/cards/" + id;
     }
 
-    // --- Search ---
     @GetMapping("/search")
     public String searchCards(@RequestParam(required = false) String name,
                               @RequestParam(required = false) String type,
                               Model model) {
-        List<CreditCard> results;
-        if (name != null && !name.isBlank()) {
-            results = creditCardService.searchByHolder(name);
-        } else if (type != null && !type.isBlank()) {
-            results = creditCardService.getCardsByType(type);
-        } else {
-            results = creditCardService.getAllCards();
-        }
-        model.addAttribute("cards", results);
+        model.addAttribute("cards", creditCardService.search(name, type));
         model.addAttribute("searchName", name);
         model.addAttribute("searchType", type);
-        model.addAttribute("cardTypes", List.of("VISA", "MASTERCARD", "AMEX", "DISCOVER"));
+        model.addAttribute("cardTypes", CARD_TYPES);
         return "cards/list";
+    }
+
+    // --- Mappers ---
+
+    private CardFormDto toDto(CreditCard card) {
+        CardFormDto dto = new CardFormDto();
+        dto.setId(card.getId());
+        dto.setCardholderName(card.getCardholderName());
+        dto.setCardNumber(card.getCardNumber());
+        dto.setExpiryDate(card.getExpiryDate());
+        dto.setCardType(card.getCardType());
+        dto.setCreditLimit(card.getCreditLimit());
+        dto.setCurrentBalance(card.getCurrentBalance());
+        dto.setIsActive(card.getIsActive());
+        return dto;
+    }
+
+    private CreditCard toEntity(CardFormDto dto) {
+        CreditCard card = new CreditCard();
+        card.setId(dto.getId());
+        card.setCardholderName(dto.getCardholderName());
+        card.setCardNumber(dto.getCardNumber());
+        card.setExpiryDate(dto.getExpiryDate());
+        card.setCardType(dto.getCardType());
+        card.setCreditLimit(dto.getCreditLimit());
+        card.setCurrentBalance(dto.getCurrentBalance() != null ? dto.getCurrentBalance() : 0.0);
+        card.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
+        return card;
     }
 }

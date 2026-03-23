@@ -65,11 +65,7 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- BUG #7: Thymeleaf iterates using wrong variable name.
-                             "creditCard" is defined in th:each but "card" is referenced in th:text.
-                             Fix: Change th:each="creditCard : ${cards}" to th:each="card : ${cards}"
-                             OR change all inner th:text="${card.*}" to th:text="${creditCard.*}" -->
-                <tr th:each="creditCard : ${cards}"
+                <tr th:each="card : ${cards}"
                     th:classappend="${!card.isActive} ? 'row-inactive' : ''">
                     <td th:text="${card.id}"></td>
                     <td th:text="${card.cardholderName}"></td>

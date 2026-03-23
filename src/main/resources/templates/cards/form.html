@@ -21,12 +21,7 @@
     <div class="card">
         <h2 th:text="${card.id == null} ? 'Add New Credit Card' : 'Edit Credit Card'">Card Form</h2>
 
-        <!-- BUG #8 is in the form action below:
-             The form always posts to /cards/save (create), even when editing an existing card.
-             When editing (card.id != null), it should post to /cards/update/{id}.
-             Fix: Use th:action="${card.id == null} ? @{/cards/save} : @{/cards/update/{id}(id=${card.id})}"
-        -->
-        <form th:action="@{/cards/save}" th:object="${card}" method="post" class="form">
+        <form th:action="${card.id == null} ? @{/cards/save} : @{/cards/update/{id}(id=${card.id})}" th:object="${card}" method="post" class="form">
 
             <div class="form-group" th:if="${card.id != null}">
                 <label>Card ID</label>

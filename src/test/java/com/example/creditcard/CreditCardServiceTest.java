@@ -62,19 +62,13 @@ class CreditCardServiceTest {
         assertThrows(IllegalArgumentException.class, () -> creditCardService.makeCharge(1L, 5000.0));
     }
 
-    // BUG #9: Test asserts wrong expected value for payment.
-    //         After a payment of $200 on a balance of $1200, balance should be $1000 (not $1400).
-    //         But this test also reveals BUG #5 in the service — the payment logic adds instead of subtracts.
-    //         Fix the service first (BUG #5), then fix the assertion: assertEquals(1000.0, ...)
     @Test
     void testMakePayment_reducesBalance() {
         when(creditCardRepository.findById(1L)).thenReturn(Optional.of(sampleCard));
         when(creditCardRepository.save(any(CreditCard.class))).thenAnswer(i -> i.getArguments()[0]);
 
         CreditCard result = creditCardService.makePayment(1L, 200.0);
-        // This assertion is WRONG — it expects the buggy behavior (balance increased).
-        // After fixing BUG #5, change the expected value to 1000.0
-        assertEquals(1400.0, result.getCurrentBalance(), 0.01);
+        assertEquals(1000.0, result.getCurrentBalance(), 0.01);
     }
 
     @Test
